@@ -2,7 +2,7 @@ from setuptools import setup
 
 __major__ = 0
 __minor__ = 0
-__release__ = 0
+__release__ = 1
 
 __version__ = '{}.{}.{}'.format(__major__, __minor__, __release__)
 __desc__ = 'A Python library for styling dataframes when exporting to excel.'
