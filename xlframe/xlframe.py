@@ -229,7 +229,7 @@ class XlFrame:
         # add named styles. Rename any whose name is already taken within book.
         renamed_styles = self._add_named_styles(book)
 
-        if auto_fit is not None:
+        if auto_fit is not None and auto_fit is not True:
             if auto_fit is True:
                 auto_fit = self.dataframe.columns
             self.auto_fit(auto_fit, index=index, include_header=bool(header))
@@ -477,7 +477,7 @@ class XlFrame:
             dtype = column.dtype.name
             if isinstance(formats, _pd.Series):
                 formats = formats.unique()
-            format_len = len(max(formats, key=len))
+            format_len = len(max(formats, key=len)) if not empty_dataframe else 0
 
             if empty_dataframe:
                 width = 0
