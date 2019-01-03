@@ -3,6 +3,9 @@
 ### Added
 - Checks for supported file extensions.
 
+### Fixed
+- .to_excel(auto_fit=False).
+
 ## 0.0.1 - 2019-01-02
 
 ### Fixed
