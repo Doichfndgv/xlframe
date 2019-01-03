@@ -87,7 +87,7 @@ To edit the existing style at a set of locations pass a dictionary of changes:
 Accepts any kwargs ```xlframe.Style``` does.
    
 ```.auto_fit()``` attempts to fit column widths based on their contents.  
-```.to_excel()``` to export styled dataframe.  
+```.to_excel()``` to export styled dataframe. Supports .xlsx and .xlsm file formats.  
 
 Default type specific styling adjusts alignment and number format of style arg.  
 <br/>
@@ -134,7 +134,7 @@ See pandas.ExcelWriter. Engine will be set to 'openpyxl'.
         """
 ```
 
-Export to excel. See pandas.DataFrame.to_excel() for more.  
+Export to excel. Supports .xlsx/.xlsm. See pandas.DataFrame.to_excel() for more.  
 
 ---
 ```python
