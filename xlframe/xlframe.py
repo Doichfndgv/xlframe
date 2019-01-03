@@ -237,7 +237,7 @@ class XlFrame:
         # add named styles. Rename any whose name is already taken within book.
         renamed_styles = self._add_named_styles(book)
 
-        if auto_fit is not None and auto_fit is not True:
+        if auto_fit is not None and auto_fit is not False:
             if auto_fit is True:
                 auto_fit = self.dataframe.columns
             self.auto_fit(auto_fit, index=index, include_header=bool(header))
