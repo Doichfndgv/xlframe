@@ -42,7 +42,7 @@ class XlFrame:
         Accepts any kwargs xlframe.Style does.
 
         .auto_fit() attempts to fit column widths based on their contents.
-        .to_excel() to export styled dataframe.
+        .to_excel() to export styled dataframe. Supports .xlsx and .xlsm file formats.
 
         Default type specific styling adjusts alignment and number format of style arg.
 
@@ -163,7 +163,7 @@ class XlFrame:
                  right_to_left=False, columns_to_hide=None, add_filters=False, replace_sheet=False,
                  auto_fit=None, **kwargs):
         """
-        Export to excel. See pandas.DataFrame.to_excel() for more.
+        Export to excel. Supports .xlsx/.xlsm. See pandas.DataFrame.to_excel() for more.
 
         :param excel_writer: ExcelWriter or file path to export to.
         :type excel_writer: ExcelWriter or string.
@@ -193,6 +193,7 @@ class XlFrame:
         engine = kwargs.pop('engine', 'openpyxl')
         startcol = kwargs.pop('startcol', 0)
         startrow = headerrow = kwargs.pop('startrow', 0)
+
         index_label = kwargs.get('index_label', self.index.name)
 
         if self._table_args and not header:
@@ -210,6 +211,13 @@ class XlFrame:
             excel_writer = self.ExcelWriter(excel_writer)
         elif 'openpyxl' not in excel_writer.engine:
             raise ValueError('Engine for excel_writer must be openpyxl.')
+
+        if _os.path.splitext(excel_writer.path)[1] not in excel_writer.supported_extensions:
+            raise ValueError(
+                'Unsupported file extension {}. Use {}.'.format(
+                    _os.path.splitext(excel_writer.path)[1], '/'.join(excel_writer.supported_extensions)
+                )
+            )
 
         if replace_sheet:
             if sheet_name in excel_writer.book:
@@ -536,6 +544,15 @@ class XlFrame:
         self._table_args = kwargs
         return self
 
+    def clear_table_formatting(self):
+        """
+        Remove table formatting.
+
+        :return: self
+        """
+        self._table_args = None
+        return self
+
     def row_stripes(self, fill_color='D9D9D9'):
         """
         Solid fill every other row with fill_color.
@@ -692,17 +709,21 @@ class XlFrame:
 
         if named:
             if s.name in self._named_styles and self._style_eq(s, self._named_styles[s.name]):
-                cache[(style_name, changes)] = s.name
+                if cache is not None:
+                    cache[(style_name, changes)] = s.name
                 return s.name
             elif s.name not in self._named_styles:
-                cache[(style_name, changes)] = s.name
+                if cache is not None:
+                    cache[(style_name, changes)] = s.name
                 return self.add_style(s)
             raise ValueError(
                 'More than one unique style created. '
                 'Cannot use name "{}" again.'.format(s.name)
             )
 
-        cache[(style_name, changes)] = self._rename(s)
+        if cache is not None:
+            cache[(style_name, changes)] = self._rename(s)
+
         return self.add_style(s)
 
     def _rename(self, style, named_styles=None):
