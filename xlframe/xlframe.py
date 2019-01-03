@@ -118,13 +118,13 @@ class XlFrame:
             index_style = self._style_parser(index_style if index_style else style)
             header_style = self._style_parser(header_style if header_style else style)
 
-        self.dataframe = self.df = dataframe
+        self.dataframe = self.df = dataframe.copy()
         self._styleframe = self._sf = _pd.DataFrame(
             data=style, index=self.dataframe.index, columns=self.dataframe.columns
         )
 
-        self._index_styles = _pd.Series(data=index_style, index=dataframe.index, name='IndexStyles')
-        self._header_styles = _pd.Series(data=header_style, index=dataframe.columns, name='HeaderStyles')
+        self._index_styles = _pd.Series(data=index_style, index=self.dataframe.index, name='IndexStyles')
+        self._header_styles = _pd.Series(data=header_style, index=self.dataframe.columns, name='HeaderStyles')
 
         self._row_heights = _pd.Series(
             data=float(_utils.Options.default_row_height), index=self.dataframe.index, name='RowHeights'
@@ -184,8 +184,8 @@ class XlFrame:
         :param kwargs: Passed to pandas.DataFrame.to_excel().
         :return: pandas.ExcelWriter.
         """
-
         save = kwargs.pop('save', isinstance(excel_writer, str))
+
         # pandas.to_excel defaults
         index = kwargs.pop('index', True)
         header = kwargs.pop('header', True)
@@ -239,7 +239,7 @@ class XlFrame:
 
         if auto_fit is not None and auto_fit is not False:
             if auto_fit is True:
-                auto_fit = self.dataframe.columns
+                auto_fit = self.columns
             self.auto_fit(auto_fit, index=index, include_header=bool(header))
 
         # index styles
@@ -314,18 +314,32 @@ class XlFrame:
 
         # format as table if needed
         if self._table_args:
-            self._table_args['ref'] = self._get_range_as_str(startcol=startcol, startrow=headerrow, index=index)
+            tables = {tbl.name for sht in book.worksheets for tbl in sht._tables}
 
-            if not self._table_args['displayName']:  # find next available table name
-                tables = {tbl.name for sht in book.worksheets for tbl in sht._tables}
+            rows = None if not self.dataframe.empty else (0, 1)
+            self._table_args['ref'] = self._get_range_as_str(
+                row_index=rows, startcol=startcol, startrow=headerrow, index=index
+            )
+
+            if 'name' in self._table_args:
+                self._table_args['displayName'] = self._table_args.pop('name')
+            if self._table_args.get('displayName', None) in tables:
+                raise ValueError('Table name "{}" already exists in book.'.format(self._table_args['displayName']))
+
+            if 'displayName' not in self._table_args:
+                # find next available table name
                 for i in _count(1):
                     if 'Table{}'.format(i) not in tables:
-                        self._table_args['displayName'] = 'Table{}'.format(i)
+                        tbl = _table.Table(
+                            displayName='Table{}'.format(i),
+                            **self._table_args
+                        )
                         break
+            else:
+                tbl = _table.Table(
+                    **self._table_args
+                )
 
-            tbl = _table.Table(
-                **self._table_args
-            )
             sheet.add_table(tbl)
 
         elif add_filters:
@@ -392,7 +406,7 @@ class XlFrame:
         """
         idxr = _Slicer._idxr_for_frame(idxr)
         frame = self.dataframe.loc[idxr[0], idxr[1]]
-        styles = self.styles[idxr[0], idxr[1]]
+        styles = self._styleframe.loc[idxr[0], idxr[1]]
 
         if frame.empty:
             return
@@ -468,7 +482,7 @@ class XlFrame:
         :return: self
         """
         if columns is None:
-            columns = self._styleframe.columns
+            columns = self.columns
         if flat is None:
             flat = _utils.Options.default_autofit_flat
         if scalar is None:
@@ -532,7 +546,8 @@ class XlFrame:
         :param kwargs: Passed to openpyxl.worksheet.table.Table
         :return: self
         """
-
+        if table_name is not None:
+            kwargs['displayName'] = table_name
         if isinstance(table_style, str):
             table_style = _table.TableStyleInfo(
                 name=table_style,
@@ -540,7 +555,6 @@ class XlFrame:
                 showColumnStripes=col_stripes,
             )
         kwargs['tableStyleInfo'] = table_style
-        kwargs['displayName'] = table_name
         self._table_args = kwargs
         return self
 
@@ -587,14 +601,13 @@ class XlFrame:
         :type startcol: int
         :return: column letter
         """
-
         if not isinstance(column, (int, str)):
             raise TypeError("Column must be an index or column name.")
 
         idx = None
         # worksheet columns index start from 1
-        if column in self.dataframe.columns:  # column name
-            idx = self.dataframe.columns.get_loc(column) + startcol + 1
+        if column in self.columns:  # column name
+            idx = self.columns.get_loc(column) + startcol + 1
         elif isinstance(column, int) and column >= 0:  # column index
             idx = column + startcol + 1
 
@@ -659,16 +672,16 @@ class XlFrame:
         Make changes to existing styles of source at idxr.
 
         :param idxr: (index, columns) to apply changes to.
-        :param source: source dataframe.loc to index with idxr
-        :type source: pandas.DataFrame.loc
+        :param source: source to index with idxr
+        :type source: Some indexable pandas structure. pandas.Series/DataFrame/.loc/.iloc ect.
         :param changes: Changes to apply to styles of source at idxr. kwargs for xlframe.Style.
         :type changes: Dict
         :return: List of newly created names.
         :rtype: List of strings
         """
         cache = dict()
-        changes = tuple(changes.items())
         section = source[idxr]
+        changes = tuple(changes.items())
 
         if isinstance(section, _pd.DataFrame):
             source[idxr] = section.applymap(lambda style: self._style_edit(style, changes=changes, cache=cache))
@@ -773,8 +786,8 @@ class XlFrame:
         :rtype: str
         """
         if columns is None:  # returns cells range for all columns
-            start_letter = self.get_column_letter(self.dataframe.columns[0], startcol=startcol - index)
-            end_letter = self.get_column_letter(self.dataframe.columns[-1], startcol=startcol)
+            start_letter = self.get_column_letter(self.columns[0], startcol=startcol - index)
+            end_letter = self.get_column_letter(self.columns[-1], startcol=startcol)
         else:
             if isinstance(columns, (int, str)):
                 start_letter = self.get_column_letter(columns, startcol=startcol)
