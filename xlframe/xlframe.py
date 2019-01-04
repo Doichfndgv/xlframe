@@ -292,13 +292,14 @@ class XlFrame:
                     else:
                         continue
 
-                make_copy = len(column) != column.nunique()
                 for row_index, index_link in enumerate(column.iteritems()):
                     index_value, hyperlink = index_link
-                    if make_copy and isinstance(hyperlink, _Hyperlink):
+                    if isinstance(hyperlink, _Hyperlink):
+                        #  make sure each cell has a unique Hyperlink obj to receive the ref of that cell
                         hyperlink = _copy(hyperlink)
 
                     current_cell = sheet.cell(row=row_index + startrow + 1, column=col_index + startcol + 1)
+                    #  openpyxl assigns cell ref to hyperlink
                     current_cell.hyperlink = hyperlink
 
         # set column widths
@@ -1118,7 +1119,7 @@ class _Slicer:
         if source._hyperlinks is not None:
             links = getattr(source._hyperlinks, idx_by)[idxr[0], :]
             for col in [c for c in source._hyperlinks if c in frame.columns or c in (frame.index.name, 'index')]:
-                frame.hyperlinks[col] = links[col]
+                frame.hyperlinks[col] = links[col].values
 
         return frame
 
