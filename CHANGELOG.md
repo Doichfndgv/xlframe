@@ -1,4 +1,4 @@
-## 0.0.4 - 2019-01-03
+## 0.0.4 - 2019-01-10
 
 ### Fixed
 - Bug with hyperlinks when exporting to same workbook more than once.
