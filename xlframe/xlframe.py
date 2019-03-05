@@ -385,11 +385,13 @@ class XlFrame:
                 if existing_styles is None:
                     existing_styles = self.named_styles.copy()
                     existing_styles.update({s.name: s for s in book._named_styles})
-                if not self._style_eq(existing_styles[name], self.named_styles[name]):
-                    s = _copy(style)
-                    existing_styles[self._rename(s, existing_styles)] = s
-                    book.add_named_style(s)
-                    new_styles[name] = s.name
+                style = _Style(style)
+                if not self._style_eq(style, existing_styles[name]):
+                    # Problem with _copy(style). Using _Style(style).named_style as a way to create a copy.
+                    style = style.named_style
+                    existing_styles[self._rename(style, existing_styles)] = style
+                    book.add_named_style(style)
+                    new_styles[name] = style.name
         return new_styles
 
     def _style_by_type(self, idxr=None, index=False, default_style=None, number_style=None,
