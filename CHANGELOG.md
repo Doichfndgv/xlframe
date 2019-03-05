@@ -1,3 +1,8 @@
+## 0.0.5 - 2019-03-05
+
+### Fixed
+- Bug with conflicting style names.
+
 ## 0.0.4 - 2019-01-10
 
 ### Fixed
