@@ -1,5 +1,6 @@
 import datetime as _dt
 import os as _os
+import weakref as _weakref
 from copy import copy as _copy
 from itertools import count as _count
 
@@ -74,7 +75,7 @@ class XlFrame:
         :type use_default_formats: Boolean.
         """
         if not isinstance(dataframe, _pd.DataFrame):
-            raise TypeError('Must pass pandas.DataFrame.')
+            raise TypeError('Expected type {}, got {} instead'.format(_pd.DataFrame, dataframe.__class__))
         if isinstance(dataframe.index, _pd.MultiIndex) or isinstance(dataframe.columns, _pd.MultiIndex):
             raise NotImplementedError('No support for pandas.MultiIndex on index or columns.')
 
@@ -118,7 +119,7 @@ class XlFrame:
             index_style = self._style_parser(index_style if index_style else style)
             header_style = self._style_parser(header_style if header_style else style)
 
-        self.dataframe = self.df = dataframe.copy()
+        self.dataframe = self.df = dataframe
         self._styleframe = self._sf = _pd.DataFrame(
             data=style, index=self.dataframe.index, columns=self.dataframe.columns
         )
@@ -996,8 +997,12 @@ class XlFrame:
 
 class _StyleIndexer:
     def __init__(self, styler, indexer):
-        self.styler = styler
         self.indexer = indexer
+        self._styler = _weakref.ref(styler)
+
+    @property
+    def styler(self):
+        return self._styler()
 
     def __setitem__(self, key, style):
         if isinstance(style, dict):
@@ -1021,10 +1026,14 @@ class _StyleIndexer:
 
 class _SeriesIndexer:
     def __init__(self, styler, series):
-        self.styler = styler
         self.series = series
+        self._styler = _weakref.ref(styler)
         self._loc = _StyleIndexer(styler, series.loc)
         self._iloc = _StyleIndexer(styler, series.iloc)
+
+    @property
+    def styler(self):
+        return self._styler()
 
     @property
     def loc(self):
@@ -1060,8 +1069,12 @@ class _SeriesIndexer:
 
 class _Slicer:
     def __init__(self, styler, idx_by='loc'):
-        self.styler = styler
         self.idx_by = idx_by
+        self._styler = _weakref.ref(styler)
+
+    @property
+    def styler(self):
+        return self._styler()
 
     def __setitem__(self, key, value):
         raise NotImplementedError
