@@ -1,3 +1,9 @@
+## 0.0.6 - 2019-07-11
+
+### Changed
+- Weakrefs on indexers.
+- No longer create copy of source dataframe.
+
 ## 0.0.5 - 2019-03-05
 
 ### Fixed
